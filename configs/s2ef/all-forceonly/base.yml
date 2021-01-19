@@ -1,7 +1,7 @@
 trainer: forces
 
 dataset:
-  - src: /checkpoint/electrocatalysis/relaxations/features/struct_to_energy_forces/train/20M/
+  - src: /checkpoint/electrocatalysis/relaxations/features/struct_to_energy_forces/train/all/
     normalize_labels: True
     target_mean: -0.7554450631141663
     target_std: 2.887317180633545
@@ -24,10 +24,11 @@ task:
   eval_on_free_atoms: True
   relax_dataset:
       src: /checkpoint/electrocatalysis/relaxations/features/init_to_relaxed/all/val_is/data.lmdb
-  write_pos: False
-  relaxation_steps: 500
+  write_pos: True
+  relaxation_steps: 300
   relax_opt:
       optimizer: gd
-      lr: 0.001
       maxstep: 0.04
       memory: 50
+      damping: 1.0
+      alpha: 70.0

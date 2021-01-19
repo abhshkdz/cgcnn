@@ -1,0 +1,31 @@
+includes:
+- configs/s2ef/all/base.yml
+
+model:
+  name: dimenet
+  hidden_channels: 256
+  num_blocks: 3
+  num_before_skip: 1
+  num_after_skip: 2
+  num_output_layers: 3
+  num_radial: 3
+  num_spherical: 4
+  cutoff: 6.0
+  use_pbc: True
+  max_angles_per_image: 30000
+
+optim:
+  batch_size: 4
+  eval_batch_size: 1
+  eval_every: -10000
+  num_workers: 64
+  lr_initial: 0.0001
+  lr_gamma: 0.1
+  lr_milestones: # epochs at which lr_initial <- lr_initial * lr_gamma
+    - 3
+    - 5
+    - 8
+  warmup_epochs: 1
+  warmup_factor: 0.2
+  max_epochs: 20
+  force_coefficient: 10

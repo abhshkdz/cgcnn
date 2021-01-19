@@ -1,0 +1,4 @@
+task:
+  relax_opt:
+      optimizer: [lbfgs]
+      memory: [50, 100]

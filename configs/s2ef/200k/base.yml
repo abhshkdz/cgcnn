@@ -1,13 +1,13 @@
 trainer: forces
 
 dataset:
-  - src: data/s2ef/200k/train/
+  - src: /checkpoint/electrocatalysis/relaxations/features/struct_to_energy_forces/train/200k/
     normalize_labels: True
     target_mean: -0.7554450631141663
     target_std: 2.887317180633545
     grad_target_mean: 0.0
     grad_target_std: 2.887317180633545
-  - src: data/s2ef/all/val_id/
+  - src: /checkpoint/electrocatalysis/relaxations/features/struct_to_energy_forces/val/is_30000/
 
 logger: tensorboard
 
@@ -16,8 +16,18 @@ task:
   description: "Regressing to energies and forces for DFT trajectories from OCP"
   type: regression
   metric: mae
+  primary_metric: forces_mae
   labels:
     - potential energy
   grad_input: atomic forces
   train_on_free_atoms: True
   eval_on_free_atoms: True
+  relax_dataset:
+      src: /checkpoint/electrocatalysis/relaxations/features/init_to_relaxed/all/val_is/data.lmdb
+  write_pos: False
+  relaxation_steps: 300
+  relax_opt:
+      optimizer: gd
+      lr: 0.001
+      maxstep: 0.04
+      memory: 50

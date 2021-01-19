@@ -1,0 +1,28 @@
+includes:
+- configs/s2ef/all-forceonly/base.yml
+
+model:
+  name: schnet
+  hidden_channels: 1024
+  num_filters: 256
+  num_interactions: 5
+  num_gaussians: 200
+  cutoff: 6.0
+  use_pbc: True
+
+optim:
+  batch_size: 20
+  eval_batch_size: 8
+  eval_every: -10000
+  num_workers: 64
+  lr_initial: 0.0001
+  lr_gamma: 0.1
+  lr_milestones: # epochs at which lr_initial <- lr_initial * lr_gamma
+    - 3
+    - 5
+    - 7
+  warmup_epochs: 2
+  warmup_factor: 0.2
+  max_epochs: 15
+  energy_coefficient: 1
+  force_coefficient: 1000

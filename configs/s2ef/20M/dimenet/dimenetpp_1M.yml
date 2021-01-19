@@ -1,0 +1,33 @@
+includes:
+- configs/s2ef/20M/base.yml
+
+model:
+  name: dimenetplusplus
+  hidden_channels: 128
+  num_blocks: 2
+  int_emb_size: 64
+  basis_emb_size: 8
+  out_emb_channels: 256
+  num_spherical: 7
+  num_radial: 6
+  cutoff: 6.0
+  envelope_exponent: 5
+  num_before_skip: 1
+  num_after_skip: 2
+  num_output_layers: 3
+  use_pbc: True
+
+optim:
+  batch_size: 24
+  eval_batch_size: 8
+  num_workers: 64
+  lr_initial: 0.0001
+  lr_gamma: 0.1
+  lr_milestones: # epochs at which lr_initial <- lr_initial * lr_gamma
+    - 4
+    - 8
+    - 12
+  warmup_epochs: 3
+  warmup_factor: 0.2
+  max_epochs: 30
+  force_coefficient: 30

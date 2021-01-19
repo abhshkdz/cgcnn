@@ -17,35 +17,31 @@ from ocpmodels.common.relaxation.ase_utils import batch_to_atoms
 from ocpmodels.common.utils import radius_graph_pbc
 
 
-class LBFGS:
+class RelaxationOptimizer:
     def __init__(
         self,
         atoms: Atoms,
         model,
         maxstep=0.01,
-        memory=100,
         damping=0.25,
-        alpha=100.0,
-        force_consistent=None,
         device="cuda:0",
         traj_dir: Path = None,
         traj_names=None,
+        verbose=True,
     ):
         self.atoms = atoms
         self.model = model
         self.maxstep = maxstep
-        self.memory = memory
         self.damping = damping
-        self.alpha = alpha
-        self.force_consistent = force_consistent
         self.device = device
         self.traj_dir = traj_dir
         self.traj_names = traj_names
+        self.verbose = verbose
         assert not self.traj_dir or (
             traj_dir and len(traj_names)
         ), "Trajectory names should be specified to save trajectories"
-        print("Step   Fmax(eV/A)")
-
+        if self.verbose:
+            print("Step   Fmax(eV/A)")
         self.model.update_graph(self.atoms)
 
     def get_forces(self, apply_constraint=True):
@@ -63,17 +59,38 @@ class LBFGS:
     def converged(self, force_threshold, iteration, forces):
         if forces is None:
             return False
-        print(iteration, torch.sqrt((forces ** 2).sum(axis=1).max()).item())
+        if self.verbose:
+            print(
+                iteration, torch.sqrt((forces ** 2).sum(axis=1).max()).item()
+            )
         return (forces ** 2).sum(axis=1).max() < force_threshold ** 2
 
-    def run(self, fmax, steps):
-        s = deque(maxlen=self.memory)
-        y = deque(maxlen=self.memory)
-        rho = deque(maxlen=self.memory)
-        r0 = f0 = e0 = None
-        H0 = 1.0 / self.alpha
+    def determine_step(self, dr):
+        steplengths = torch.norm(dr, dim=1)
+        longest_steps = scatter(
+            steplengths, self.atoms.batch, reduce="max"
+        )
+        longest_steps = torch.repeat_interleave(
+            longest_steps, self.atoms.natoms
+        )
+        maxstep = longest_steps.new_tensor(self.maxstep)
+        scale = (longest_steps + 1e-7).reciprocal() * torch.min(
+            longest_steps, maxstep
+        )
+        dr *= scale.unsqueeze(1)
+        return dr * self.damping
 
+    def setup(self):
+        raise NotImplementedError()
+
+    def step(self, iteration, f0, r0):
+        raise NotImplementedError()
+
+    def run(self, fmax, steps):
+        self.setup()
+        r0 = f0 = e0 = None
         trajectories = None
+
         if self.traj_dir:
             self.traj_dir.mkdir(exist_ok=True, parents=True)
             trajectories = [
@@ -83,7 +100,7 @@ class LBFGS:
 
         iteration = 0
         while iteration < steps and not self.converged(fmax, iteration, f0):
-            r0, f0, e0 = self.step(iteration, r0, f0, H0, rho, s, y)
+            r0, f0, e0 = self.step(iteration, f0, r0)
             iteration += 1
             if trajectories is not None:
                 self.atoms.y, self.atoms.force = e0, f0
@@ -100,22 +117,127 @@ class LBFGS:
         )
         return self.atoms
 
-    def step(self, iteration, r0, f0, H0, rho, s, y):
-        def determine_step(dr):
-            steplengths = torch.norm(dr, dim=1)
-            longest_steps = scatter(
-                steplengths, self.atoms.batch, reduce="max"
-            )
-            longest_steps = torch.repeat_interleave(
-                longest_steps, self.atoms.natoms
-            )
-            maxstep = longest_steps.new_tensor(self.maxstep)
-            scale = (longest_steps + 1e-7).reciprocal() * torch.min(
-                longest_steps, maxstep
-            )
-            dr *= scale.unsqueeze(1)
-            return dr * self.damping
 
+class Adam(RelaxationOptimizer):
+    def __init__(
+        self,
+        atoms: Atoms,
+        model,
+        maxstep=0.01,
+        damping=0.25,
+        device="cuda:0",
+        traj_dir: Path = None,
+        traj_names=None,
+        lr=0.001,
+        beta1=0.9,
+        beta2=0.999,
+        eps=1e-8,
+        verbose=True
+    ):
+        super().__init__(atoms, model, maxstep, damping, device, traj_dir, traj_names, verbose)
+        self.lr = lr
+        self.beta1 = beta1
+        self.beta2 = beta2
+        self.eps = eps
+        self.setup()
+
+    def setup(self):
+        self.m = 0.
+        self.v = 0.
+
+    def step(self, iteration, f0, r0):
+        e, f = self.get_forces()
+        f = f.to(self.device, dtype=torch.float64)
+        r = self.atoms.pos.to(self.device, dtype=torch.float64)
+
+        dr = torch.clone(f)
+
+        self.m = self.beta1 * self.m + (1-self.beta1) * dr
+        mt = self.m / (1-self.beta1**(iteration+1))
+        self.v = self.beta2 * self.v + (1-self.beta2) * (dr**2)
+        vt = self.v / (1-self.beta2**(iteration+1))
+        dr = mt / (torch.sqrt(vt) + self.eps)
+
+        dr.mul_(self.lr)
+        dr = self.determine_step(dr)
+        self.set_positions(dr)
+        return r, f, e
+
+
+class GradientDescent(RelaxationOptimizer):
+    def __init__(
+        self,
+        atoms: Atoms,
+        model,
+        maxstep=0.01,
+        damping=0.25,
+        device="cuda:0",
+        traj_dir: Path = None,
+        traj_names=None,
+        lr=0.001,
+        mu=0.,
+        nesterov=False,
+        verbose=True
+    ):
+        super().__init__(atoms, model, maxstep, damping, device, traj_dir, traj_names, verbose)
+        self.lr = lr
+        self.mu = mu
+        self.nesterov = nesterov
+        self.setup()
+
+    def setup(self):
+        self.momentum = None
+
+    def step(self, iteration, f0, r0):
+        e, f = self.get_forces()
+        f = f.to(self.device, dtype=torch.float64)
+        r = self.atoms.pos.to(self.device, dtype=torch.float64)
+
+        dr = torch.clone(f)
+        if self.mu != 0:
+            if self.momentum is None:
+                self.momentum = torch.clone(dr).detach()
+            else:
+                self.momentum.mul_(self.mu).add_(dr)
+
+            if self.nesterov:
+                dr.add_(self.momentum, alpha=self.mu)
+            else:
+                dr = self.momentum
+        dr.mul_(self.lr)
+        dr = self.determine_step(dr)
+        self.set_positions(dr)
+        return r, f, e
+
+
+class LBFGS(RelaxationOptimizer):
+    def __init__(
+        self,
+        atoms: Atoms,
+        model,
+        maxstep=0.01,
+        memory=100,
+        damping=0.25,
+        alpha=100.0,
+        force_consistent=None,
+        device="cuda:0",
+        traj_dir: Path = None,
+        traj_names=None,
+        verbose=True
+    ):
+        super().__init__(atoms, model, maxstep, damping, device, traj_dir, traj_names, verbose)
+        self.memory = memory
+        self.alpha = alpha
+        self.force_consistent = force_consistent
+        self.setup()
+
+    def setup(self):
+        self.s = deque(maxlen=self.memory)
+        self.y = deque(maxlen=self.memory)
+        self.rho = deque(maxlen=self.memory)
+        self.H0 = 1.0 / self.alpha
+
+    def step(self, iteration, f0, r0):
         e, f = self.get_forces()
         f = f.to(self.device, dtype=torch.float64)
         r = self.atoms.pos.to(self.device, dtype=torch.float64)
@@ -124,26 +246,23 @@ class LBFGS:
         if iteration > 0:
             s0 = (r - r0).flatten()
             y0 = -(f - f0).flatten()
-            s.append(s0)
-            y.append(y0)
-            rho.append(1.0 / torch.dot(y0, s0))
+            self.s.append(s0)
+            self.y.append(y0)
+            self.rho.append(1.0 / torch.dot(y0, s0))
 
         loopmax = min(self.memory, iteration)
         alpha = f.new_empty(loopmax)
         q = -f.flatten()
 
         for i in range(loopmax - 1, -1, -1):
-            alpha[i] = rho[i] * torch.dot(s[i], q)
-            q -= alpha[i] * y[i]
-        z = H0 * q
+            alpha[i] = self.rho[i] * torch.dot(self.s[i], q)
+            q -= alpha[i] * self.y[i]
+        z = self.H0 * q
         for i in range(loopmax):
-            beta = rho[i] * torch.dot(y[i], z)
-            z += s[i] * (alpha[i] - beta)
+            beta = self.rho[i] * torch.dot(self.y[i], z)
+            z += self.s[i] * (alpha[i] - beta)
         p = -z.reshape((-1, 3))  # descent direction
-        dr = determine_step(p)
-        if torch.abs(dr).max() < 1e-7:
-            # Same configuration again (maybe a restart):
-            return
+        dr = self.determine_step(p)
         self.set_positions(dr)
         return r, f, e
 

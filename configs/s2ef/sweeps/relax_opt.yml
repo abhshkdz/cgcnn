@@ -1,0 +1,4 @@
+task:
+  relax_opt:
+      optimizer: [gd, gd_momentum, gd_nesterov_momentum, adam]
+      lr: [0.01, 0.005, 0.001, 0.0005]

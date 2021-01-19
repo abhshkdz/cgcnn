@@ -125,7 +125,7 @@ class ForcesTrainer(BaseTrainer):
                 self.val_loader = DataLoader(
                     self.val_dataset,
                     self.config["optim"].get("eval_batch_size", 64),
-                    shuffle=False,
+                    shuffle=True,
                     collate_fn=self.parallel_collater,
                     num_workers=self.config["optim"]["num_workers"],
                     pin_memory=True,
@@ -611,6 +611,8 @@ class ForcesTrainer(BaseTrainer):
         for i, batch in tqdm(
             enumerate(self.relax_loader), total=len(self.relax_loader)
         ):
+            if i == 100:
+                break
             relaxed_batch = ml_relax(
                 batch=batch,
                 model=self,

@@ -1,0 +1,62 @@
+dataset:
+  - src: data/s2ef/20M/train/
+    normalize_labels: True
+    target_mean: -0.7554450631141663
+    target_std: 2.887317180633545
+    grad_target_mean: 0.0
+    grad_target_std: 2.887317180633545
+  - src: data/s2ef/all/val_id/
+
+logger: tensorboard
+
+model:
+  name: dimenetplusplus
+  hidden_channels: 128
+  num_blocks: 2
+  int_emb_size: 64
+  basis_emb_size: 8
+  out_emb_channels: 256
+  num_spherical: 7
+  num_radial: 6
+  cutoff: 6.0
+  envelope_exponent: 5
+  num_before_skip: 1
+  num_after_skip: 2
+  num_output_layers: 3
+  use_pbc: True
+
+optim:
+  batch_size: 24
+  eval_batch_size: 6
+  num_workers: 64
+  lr_initial: 0.0001
+  lr_gamma: 0.1
+  lr_milestones: # epochs at which lr_initial <- lr_initial * lr_gamma
+    - 4
+    - 8
+    - 12
+  warmup_epochs: 3
+  warmup_factor: 0.2
+  max_epochs: 30
+  force_coefficient: 30
+
+trainer: forces
+
+task:
+  dataset: trajectory_lmdb
+  description: "Regressing to energies and forces for DFT trajectories from OCP"
+  type: regression
+  metric: mae
+  labels:
+    - potential energy
+  grad_input: atomic forces
+  train_on_free_atoms: True
+  eval_on_free_atoms: True
+
+  relax_dataset:
+    src: data/is2rs/all/val_is/data.lmdb
+  relaxation_steps: 300
+  relax_opt:
+    optimizer: "lbfgs"
+    memory: 100
+    traj_dir: "traj_lbfgs"
