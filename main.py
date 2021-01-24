@@ -130,6 +130,7 @@ if __name__ == "__main__":
             cpus_per_task=(args.num_workers + 1),
             tasks_per_node=(args.num_gpus if args.distributed else 1),
             nodes=args.num_nodes,
+            slurm_constraint="volta32gb",
         )
         jobs = executor.map_array(Runner(), configs)
         print("Submitted jobs:", ", ".join([job.job_id for job in jobs]))

@@ -30,6 +30,7 @@ class LBFGS:
         device="cuda:0",
         traj_dir: Path = None,
         traj_names=None,
+        verbose=True,
     ):
         self.atoms = atoms
         self.model = model
@@ -41,10 +42,12 @@ class LBFGS:
         self.device = device
         self.traj_dir = traj_dir
         self.traj_names = traj_names
+        self.verbose = verbose
         assert not self.traj_dir or (
             traj_dir and len(traj_names)
         ), "Trajectory names should be specified to save trajectories"
-        print("Step   Fmax(eV/A)")
+        if self.verbose:
+            print("Step   Fmax(eV/A)")
 
         self.model.update_graph(self.atoms)
 
@@ -63,7 +66,10 @@ class LBFGS:
     def converged(self, force_threshold, iteration, forces):
         if forces is None:
             return False
-        print(iteration, torch.sqrt((forces ** 2).sum(axis=1).max()).item())
+        if self.verbose:
+            print(
+                iteration, torch.sqrt((forces ** 2).sum(axis=1).max()).item()
+            )
         return (forces ** 2).sum(axis=1).max() < force_threshold ** 2
 
     def run(self, fmax, steps):

@@ -23,6 +23,7 @@ def ml_relax(
     relax_opt,
     device="cuda:0",
     transform=None,
+    verbose=True,
 ):
     """
     Runs ML-based relaxations.
@@ -43,6 +44,8 @@ def ml_relax(
 
     # Run ML-based relaxation
     traj_dir = relax_opt.get("traj_dir", None)
+    if traj_dir is not None:
+        traj_dir = Path(traj_dir)
     optimizer = LBFGS(
         batch,
         calc,
@@ -51,8 +54,9 @@ def ml_relax(
         damping=relax_opt.get("damping", 1.0),
         alpha=relax_opt.get("alpha", 70.0),
         device=device,
-        traj_dir=Path(traj_dir),
+        traj_dir=traj_dir,
         traj_names=ids,
+        verbose=verbose,
     )
     relaxed_batch = optimizer.run(fmax=fmax, steps=steps)
 

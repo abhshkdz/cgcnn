@@ -315,17 +315,21 @@ class BaseTrainer:
         if self.config["task"]["dataset"] in [
             "trajectory_lmdb",
             "single_point_lmdb",
+            "trajectory_ase",
         ]:
             bond_feat_dim = self.config["model_attributes"].get(
                 "num_gaussians", 50
             )
+            sample_datapoint = self.train_loader.dataset[0]
+            if self.config["task"]["dataset"] == "trajectory_ase":
+                sample_datapoint = sample_datapoint["data_objects"][0]
         else:
             raise NotImplementedError
 
         self.model = registry.get_model_class(self.config["model"])(
-            self.train_loader.dataset[0].x.shape[-1]
-            if hasattr(self.train_loader.dataset[0], "x")
-            and self.train_loader.dataset[0].x is not None
+            sample_datapoint.x.shape[-1]
+            if hasattr(sample_datapoint, "x")
+            and sample_datapoint.x is not None
             else None,
             bond_feat_dim,
             self.num_targets,

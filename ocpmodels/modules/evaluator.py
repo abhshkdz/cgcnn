@@ -5,6 +5,10 @@ This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
 
+import numpy as np
+import torch
+
+
 """
 An evaluation module for use with the OCP dataset and suite of tasks. It should
 be possible to import this independently of the rest of the codebase, e.g:
@@ -23,9 +27,6 @@ to add more metrics. `evaluator.eval` takes as input two dictionaries, one for
 predictions and another for targets to check against. It returns a dictionary
 with the relevant metrics computed.
 """
-
-import numpy as np
-import torch
 
 
 class Evaluator:
@@ -205,6 +206,31 @@ def energy_within_threshold(prediction, target):
         "total": success,
         "numel": total,
     }
+
+
+def average_distance(prediction, target):
+    pred_pos = torch.split(
+        prediction["positions"], prediction["natoms"].tolist()
+    )
+    target_pos = torch.split(target["positions"], target["natoms"].tolist())
+
+    mean_distance = []
+    for idx, ml_pos in enumerate(pred_pos):
+        mean_distance.append(
+            np.mean(
+                np.linalg.norm(
+                    min_diff(
+                        ml_pos.detach().cpu().numpy(),
+                        target_pos[idx].detach().cpu().numpy(),
+                        target["cell"][idx].detach().cpu().numpy(),
+                        target["pbc"].tolist(),
+                    ),
+                    axis=1,
+                )
+            )
+        )
+
+    return mean_distance
 
 
 def average_distance_within_threshold(prediction, target):

@@ -7,6 +7,7 @@ LICENSE file in the root directory of this source tree.
 
 from itertools import chain
 
+import numpy as np
 import torch
 
 from ocpmodels.datasets import data_list_collater
@@ -97,3 +98,23 @@ class ParallelCollater:
                 data_list_collater(data_list[split[i] : split[i + 1]])
                 for i in range(len(split) - 1)
             ]
+
+
+class SystemParallelCollater(ParallelCollater):
+    def __init__(self, num_gpus, otf_graph=False):
+        super(SystemParallelCollater, self).__init__(
+            num_gpus=num_gpus,
+            otf_graph=otf_graph,
+        )
+
+    def __call__(self, system_list):
+
+        batch_images = []
+        for system in system_list:
+            rnd_image_idx = np.random.choice(len(system["data_objects"]))
+            batch_images.append(system["data_objects"][rnd_image_idx])
+        batch_collater = super(SystemParallelCollater, self).__call__(
+            batch_images
+        )
+
+        return batch_collater
