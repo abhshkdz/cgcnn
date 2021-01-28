@@ -1,0 +1,50 @@
+trainer: forces
+
+dataset:
+  - src: /checkpoint/electrocatalysis/relaxations/features/struct_to_energy_forces/train/200k/
+  - src: /checkpoint/electrocatalysis/relaxations/features/struct_to_energy_forces/val/is_30000/
+
+model:
+  name: forcenet_sequential
+  num_interactions: 5
+  cutoff: 6
+  basis: "sphallmul"
+  ablation: "none"
+  depth_mlp_edge: 2
+  depth_mlp_node: 1
+  activation_str: "swish"
+  decoder_activation_str: "swish"
+  feat: "full"
+  hidden_channels: 512
+  decoder_hidden_channels: 512
+  max_n: 3
+
+optim:
+  batch_size: 8
+  eval_batch_size: 1
+  eval_every: -10000
+  num_workers: 64
+  lr_initial: 0.0005
+  max_epochs: 20
+  energy_coefficient: 0
+  lr_gamma: 0.1
+  lr_milestones: # epochs at which lr_initial <- lr_initial * lr_gamma
+    - 5
+    - 8
+    - 10
+  warmup_epochs: 3
+  warmup_factor: 0.2
+
+task:
+  dataset: trajectory_lmdb
+  description: "Regressing to energies and forces for DFT trajectories from OCP"
+  type: regression
+  metric: mae
+  primary_metric: forces_mae
+  labels:
+    - potential energy
+  grad_input: atomic forces
+  tag_specific_weights:
+    - 0.05
+    - 1.0
+    - 1.0

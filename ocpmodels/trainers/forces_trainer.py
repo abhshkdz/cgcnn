@@ -342,6 +342,7 @@ class ForcesTrainer(BaseTrainer):
         self.metrics = {}
         for epoch in range(self.config["optim"]["max_epochs"]):
             self.model.train()
+            print(self.model)
             for i, batch in enumerate(self.train_loader):
                 # Forward, loss, backward.
                 with torch.cuda.amp.autocast(enabled=self.scaler is not None):
