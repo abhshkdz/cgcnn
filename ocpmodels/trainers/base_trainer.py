@@ -316,7 +316,7 @@ class BaseTrainer:
             bond_feat_dim,
             self.num_targets,
             **self.config["model_attributes"],
-        ).to(self.device)
+        )  # .to(self.device)
 
         if distutils.is_master():
             print(
@@ -328,11 +328,11 @@ class BaseTrainer:
         if self.logger is not None:
             self.logger.watch(self.model)
 
-        self.model = OCPDataParallel(
-            self.model,
-            output_device=self.device,
-            num_gpus=1 if not self.cpu else 0,
-        )
+        #        self.model = OCPDataParallel(
+        #            self.model,
+        #            output_device=self.device,
+        #            num_gpus=1 if not self.cpu else 0,
+        #        )
         if distutils.initialized():
             self.model = DistributedDataParallel(
                 self.model, device_ids=[self.device]
@@ -450,14 +450,11 @@ class BaseTrainer:
 
             self.scheduler.step()
 
-            with torch.no_grad():
-                if self.val_loader is not None:
-                    v_loss, v_mae = self.validate(split="val", epoch=epoch)
+            if self.val_loader is not None:
+                v_loss, v_mae = self.validate(split="val", epoch=epoch)
 
-                if self.test_loader is not None:
-                    test_loss, test_mae = self.validate(
-                        split="test", epoch=epoch
-                    )
+            if self.test_loader is not None:
+                test_loss, test_mae = self.validate(split="test", epoch=epoch)
 
             if not self.is_debug:
                 save_checkpoint(
@@ -492,6 +489,7 @@ class BaseTrainer:
                 "test_mae": test_mae,
             }
 
+    @torch.no_grad()
     def validate(self, split="val", epoch=None):
         if distutils.is_master():
             print("### Evaluating on {}.".format(split))
@@ -511,7 +509,12 @@ class BaseTrainer:
             # Forward.
             with torch.cuda.amp.autocast(enabled=self.scaler is not None):
                 out = self._forward(batch)
-            loss = self._compute_loss(out, batch)
+
+            if self.config["task"].get("pipeline_parallel", False):
+                # loss = self._compute_loss(out, [batch[0].to("cuda:7")])
+                loss = self._compute_loss(out, [self.to_last_device(batch[0])])
+            else:
+                loss = self._compute_loss(out, batch)
 
             # Compute metrics.
             metrics = self._compute_metrics(out, batch, evaluator, metrics)
@@ -751,3 +754,17 @@ class BaseTrainer:
 
             print(f"Writing results to {full_path}")
             np.savez_compressed(full_path, **gather_results)
+
+    def to_last_device(self, batch):
+        """
+        Helper function to move a batch to the last device for pipeline
+        parallel usecase.
+
+        """
+        assert (
+            self.config["model_attributes"]["pipeline_parallel_devices"] != []
+        )
+        batch = batch.to(
+            self.config["model_attributes"]["pipeline_parallel_devices"][-1]
+        )
+        return batch

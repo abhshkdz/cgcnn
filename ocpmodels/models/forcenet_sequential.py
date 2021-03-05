@@ -18,6 +18,7 @@ from ocpmodels.common.registry import registry
 from ocpmodels.common.utils import get_pbc_distances, radius_graph_pbc
 from ocpmodels.datasets.embeddings import ATOMIC_RADII, CONTINUOUS_EMBEDDINGS
 from ocpmodels.models.base import BaseModel
+from ocpmodels.models.pipeline_parallel.gpipe import GPipe
 from ocpmodels.models.utils.activations import Act
 from ocpmodels.models.utils.basis import Basis, SphericalSmearing
 
@@ -91,6 +92,7 @@ class EmbeddingLayer(nn.Module):
             cell_offsets,
             neighbors,
         ) = input
+
         z = atomic_numbers.long()
         if self.feat == "simple":
             h = self.embedding(z)
@@ -98,6 +100,7 @@ class EmbeddingLayer(nn.Module):
             h = self.embedding(self.atom_map[z])
         else:
             raise RuntimeError("Undefined feature type for atom")
+
         return (
             h,
             atomic_numbers,
@@ -257,7 +260,7 @@ class BasisFunctionLayer(nn.Module):
         else:
             edge_attr = self.basis_fun(raw_edge_attr)
 
-        return (embedding_output, edge_index, edge_attr, edge_weight, batch)
+        return (embedding_output, edge_attr, edge_weight, edge_index, batch)
 
 
 class InteractionBlock(MessagePassing):
@@ -361,7 +364,7 @@ class InteractionBlock(MessagePassing):
             torch.nn.init.xavier_uniform_(self.center_W)
 
     def forward(self, input):
-        x, edge_index, edge_attr, edge_weight, batch = input
+        x, edge_attr, edge_weight, edge_index, batch = input
         if self.basis_type != "rawcat":
             edge_emb = self.lin_basis(edge_attr)
         else:
@@ -387,7 +390,7 @@ class InteractionBlock(MessagePassing):
                 x = self.propagate(edge_index, x=x, W=W) + self.center_W * x
         x = self.mlp_trans(x)
 
-        return (x + orig_x, edge_index, edge_attr, edge_weight, batch)
+        return (x + orig_x, edge_attr, edge_weight, edge_index, batch)
 
     def message(self, x_j, W):
         if self.ablation == "nofilter":
@@ -512,6 +515,10 @@ class ForceNetSequential(BaseModel):
         decoder_hidden_channels=512,
         decoder_type="mlp",
         decoder_activation_str="swish",
+        pipeline_parallel_balance=[],
+        pipeline_parallel_devices=[],
+        pipeline_parallel_chunks=1,
+        pipeline_parallel_checkpoint="never",
         training=True,
         otf_graph=False,
     ):
@@ -519,6 +526,10 @@ class ForceNetSequential(BaseModel):
         super(ForceNetSequential, self).__init__()
         self.training = training
         self.ablation = ablation
+
+        assert pipeline_parallel_balance != []
+        assert pipeline_parallel_devices != []
+
         if self.ablation not in [
             "none",
             "nofilter",
@@ -609,27 +620,22 @@ class ForceNetSequential(BaseModel):
         )
         self.seq_model = nn.Sequential(*list_of_modules)
 
-    def forward(self, data):
+        # number of sequential modules and sum of balance params
+        # should be the same!
+        assert len(self.seq_model) == sum(pipeline_parallel_balance)
 
-        atomic_numbers = data.atomic_numbers
-        pos = data.pos
-        batch = data.batch
-        edge_index = data.edge_index
-        cell = data.cell
-        cell_offsets = data.cell_offsets
-        neighbors = data.neighbors
-
-        input = (
-            atomic_numbers,
-            pos,
-            batch,
-            edge_index,
-            cell,
-            cell_offsets,
-            neighbors,
+        self.pipe_model = GPipe(
+            self.seq_model,
+            balance=pipeline_parallel_balance,
+            devices=pipeline_parallel_devices,
+            chunks=pipeline_parallel_chunks,
+            checkpoint=pipeline_parallel_checkpoint,
         )
 
-        energy, force = self.seq_model(input)
+    def forward(self, data):
+
+        data = data[0]
+        energy, force = self.pipe_model(data)
         return energy, force
 
     @property

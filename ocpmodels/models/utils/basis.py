@@ -269,8 +269,8 @@ class SphericalSmearing(nn.Module):
         phi = torch.acos(xyz[:, 2])
         theta = torch.atan2(-xyz[:, 1], -xyz[:, 0]) + math.pi
 
-        phi = phi.cpu().numpy()
-        theta = theta.cpu().numpy()
+        phi = phi.cpu().detach().numpy()
+        theta = theta.cpu().detach().numpy()
 
         m_tile = np.tile(self.m, (len(xyz), 1))
         n_tile = np.tile(self.n, (len(xyz), 1))
