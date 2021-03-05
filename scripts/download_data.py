@@ -38,8 +38,11 @@ S2EF_COUNTS = {
 }
 
 
-def get_data(task, split, del_intmd_files):
-    datadir = os.path.join(os.path.dirname(ocpmodels.__path__[0]), "data")
+def get_data(task, split, del_intmd_files, path):
+    if path:
+        datadir = os.path.join(path, "data")
+    else:
+        datadir = os.path.join(os.path.dirname(ocpmodels.__path__[0]), "data")
     os.makedirs(datadir, exist_ok=True)
 
     if task == "s2ef" and split is None:
@@ -147,6 +150,11 @@ if __name__ == "__main__":
     parser.add_argument(
         "--ref-energy", action="store_true", help="Subtract reference energies"
     )
+    parser.add_argument(
+        "--path",
+        type=str,
+        help="Specify the path for ocp directory (in case module is not installed in same location)",
+    )
 
     args, _ = parser.parse_known_args()
-    get_data(task=args.task, split=args.split, del_intmd_files=not args.keep)
+    get_data(task=args.task, split=args.split, del_intmd_files=not args.keep, path=args.path)
