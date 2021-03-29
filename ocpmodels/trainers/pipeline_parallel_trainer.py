@@ -360,6 +360,18 @@ class PipelineParallelTrainer(BaseTrainer):
                 scale = self.scaler.get_scale() if self.scaler else 1.0
                 end_time = time.time()
                 total_time = end_time - start_time
+
+                # =================
+                # To use along with SimpleDistributedDataParallel
+                # The main idea is to do the weight update after all forwrd/backward + checkpointing computation has occured
+                # =================
+
+                # [gradient syncing after backward pass is done]
+                for group in self.optimizer.param_groups:
+                    for p in group["params"]:
+                        if p.grad is not None:
+                            distutils.all_reduce(p.grad.data)
+
                 print("gps =", self.config["optim"]["batch_size"] / total_time)
                 print("nps =", count_nodes / total_time)
                 # Compute metrics.
@@ -399,7 +411,6 @@ class PipelineParallelTrainer(BaseTrainer):
 
                 # Evaluate on val set every `eval_every` iterations.
                 if eval_every != -1 and iters % eval_every == 0:
-                    print("aya")
                     if self.val_loader is not None:
                         val_metrics = self.validate(
                             split="val",

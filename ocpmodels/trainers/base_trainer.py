@@ -35,6 +35,23 @@ from ocpmodels.modules.evaluator import Evaluator
 from ocpmodels.modules.normalizer import Normalizer
 
 
+class SimpleDistributedDataParallel(torch.nn.Module):
+    """Implements distributed data parallelism at the module level.
+    A simplified version of :class:`torch.nn.parallel.DistributedDataParallel`.
+    This version uses a c10d process group for communication and does not
+    broadcast buffers.
+    Args:
+        module (~torch.nn.Module): module to be parallelized
+    """
+
+    def __init__(self, module):
+        super().__init__()
+        self.module = module
+
+    def forward(self, *inputs, **kwargs):
+        return self.module(*inputs, **kwargs)
+
+
 @registry.register_trainer("base")
 class BaseTrainer:
     def __init__(
@@ -334,9 +351,10 @@ class BaseTrainer:
         #            num_gpus=1 if not self.cpu else 0,
         #        )
         if distutils.initialized():
-            self.model = DistributedDataParallel(
-                self.model, device_ids=[self.device]
-            )
+            # DistributedDataParallel with checkpointing leads to errors.
+            # Hence we use a custom Simple DDP class and do the weight updates explicity.
+            # Checkout pipeline_parallel_trainer.py
+            self.model = SimpleDistributedDataParallel(module=self.model)
 
     def load_pretrained(self, checkpoint_path=None, ddp_to_dp=False):
         if checkpoint_path is None or os.path.isfile(checkpoint_path) is False:

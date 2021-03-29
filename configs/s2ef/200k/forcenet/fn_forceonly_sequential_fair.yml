@@ -6,7 +6,7 @@ dataset:
 
 model:
   name: forcenet_sequential
-  num_interactions: 14
+  num_interactions: 3
   cutoff: 6
   basis: "sphallmul"
   ablation: "none"
@@ -18,10 +18,10 @@ model:
   hidden_channels: 64
   decoder_hidden_channels: 128
   max_n: 3
-  pipeline_parallel_chunks: 8
-  pipeline_parallel_balance: [ 3, 2, 2, 2, 2, 2, 2, 2 ]
-  pipeline_parallel_devices: [ 0, 1, 2, 3, 4, 5, 6, 7 ]
-  pipeline_parallel_checkpoint: "never"
+  pipeline_parallel_chunks: 2
+  pipeline_parallel_balance: [ 3, 3 ]
+  pipeline_parallel_devices: [ 0, 1 ]
+  pipeline_parallel_checkpoint: "always"
 
 #hidden_channels: 6144
 # decoder_hidden_channels: 15360
@@ -29,7 +29,7 @@ model:
 optim:
   batch_size: 8
   eval_batch_size: 1
-  eval_every: 1
+  eval_every: 10
   num_workers: 64
   lr_initial: 0.0005
   max_epochs: 20

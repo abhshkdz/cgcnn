@@ -280,7 +280,9 @@ def build_config(args, args_override):
     # Distributed
     config["local_rank"] = args.local_rank
     config["distributed_port"] = args.distributed_port
-    config["world_size"] = args.num_nodes * args.num_gpus
+    config[
+        "world_size"
+    ] = args.num_nodes  # * args.num_gpus, hardcoding for PP + DDP
     config["distributed_backend"] = args.distributed_backend
 
     return config

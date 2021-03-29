@@ -35,6 +35,17 @@ def setup(config):
                     nnodes = int(os.environ.get("SLURM_NNODES"))
                     assert ntasks % nnodes == 0
                     ntasks_per_node = int(ntasks / nnodes)
+
+                ## Hardcoding for now to enable pipeline parallel + DDP
+                node_id = int(os.environ.get("SLURM_NODEID"))
+                local_id = int(os.environ.get("SLURM_LOCALID"))
+                config["rank"] = node_id
+                config["local_rank"] = local_id
+
+                if local_id == 0:
+                    torch.cuda.set_device(local_id)
+
+                """
                 if ntasks_per_node == 1:
                     assert config["world_size"] % nnodes == 0
                     gpus_per_node = config["world_size"] // nnodes
@@ -45,7 +56,7 @@ def setup(config):
                     assert ntasks_per_node == config["world_size"] // nnodes
                     config["rank"] = int(os.environ.get("SLURM_PROCID"))
                     config["local_rank"] = int(os.environ.get("SLURM_LOCALID"))
-
+                """
                 print(
                     "Init: ",
                     config["init_method"],
