@@ -12,6 +12,7 @@ take arbitrary chemical structures as input to predict energy / forces / positio
 - [DimeNet](https://arxiv.org/abs/2003.03123)
 - [SchNet](https://arxiv.org/abs/1706.08566)
 - [CGCNN](https://link.aps.org/doi/10.1103/PhysRevLett.120.145301)
+- [GROVER](https://arxiv.org/abs/2007.02835)
 
 ## Installation
 

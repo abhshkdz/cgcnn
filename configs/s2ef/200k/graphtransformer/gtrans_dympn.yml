@@ -1,0 +1,38 @@
+includes:
+- configs/s2ef/200k/base.yml
+
+model:
+  name: graphtransformer
+  cutoff: 6.0
+  regress_forces: True
+  use_pbc: False
+  hidden_size: 100
+  dropout: 0.1
+  activation: "PReLU"
+  num_mt_block:  1
+  num_attn_head: 4
+  embedding_output_type: "atom"
+  bias: True
+  cuda: True
+  res_connection: False
+  ffn_hidden_size: 200 # From GROVER finetune settings
+  num_gaussians: 50
+  undirected: False # Don't want the model to behave differently depending on if it's undirected or not
+  debug: False
+  dynamic_depth: "truncnorm"
+  depth: 5
+
+optim:
+  batch_size: 75
+  eval_batch_size: 50
+  num_workers: 64
+  lr_initial: 0.001
+  lr_gamma: 0.1
+  lr_milestones: # epochs at which lr_initial <- lr_initial * lr_gamma
+    - 5
+    - 8
+    - 11
+  warmup_epochs: 3
+  warmup_factor: 0.2
+  max_epochs: 30
+  force_coefficient: 10
