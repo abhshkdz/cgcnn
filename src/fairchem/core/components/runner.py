@@ -25,7 +25,7 @@ class Runner(metaclass=ABCMeta):
         self._job_config = cfg
 
     @abstractmethod
-    def run(self) -> Any:
+    def run(self, **kwargs) -> Any:
         raise NotImplementedError
 
     @abstractmethod
