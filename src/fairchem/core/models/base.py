@@ -251,6 +251,11 @@ class HydraModel(nn.Module, GraphModelMixin):
         # if finetune_config is provided, then attempt to load the model from the given finetune checkpoint
         starting_model = None
         if finetune_config is not None:
+            # Make it hard to sneak more fields into finetuneconfig
+            assert (
+                len(set(finetune_config.keys()) - {"starting_checkpoint", "override"})
+                == 0
+            )
             starting_model: HydraModel = load_model_and_weights_from_checkpoint(
                 finetune_config["starting_checkpoint"]
             )
@@ -260,6 +265,10 @@ class HydraModel(nn.Module, GraphModelMixin):
             assert isinstance(
                 starting_model, HydraModel
             ), "Can only finetune starting from other hydra models!"
+            # TODO this is a bit hacky to overrride attrs in the backbone
+            if "override" in finetune_config:
+                for key, value in finetune_config["override"].items():
+                    setattr(starting_model.backbone, key, value)
 
         if backbone is not None:
             backbone = copy.deepcopy(backbone)
