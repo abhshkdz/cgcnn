@@ -104,9 +104,9 @@ class OCPNEB(DyNEB):
         self.trainer = registry.get_trainer_class(trainer)(
             task=config.get("task", {}),
             model=config["model"],
-            outputs={},
+            outputs=config.get("outputs", {}),
             loss_functions=config.get("loss_functions", {}),
-            evaluation_metrics={},
+            evaluation_metrics=config.get("evaluation_metrics", {}),
             dataset=[config["dataset"]],
             optimizer=config["optim"],
             identifier="",
