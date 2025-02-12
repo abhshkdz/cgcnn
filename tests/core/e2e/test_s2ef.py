@@ -8,19 +8,18 @@ from pathlib import Path
 import numpy as np
 import numpy.testing as npt
 import pytest
-from fairchem.core.common import distutils
 from test_e2e_commons import (
     _run_main,
     oc20_lmdb_train_and_val_from_paths,
     update_yaml_with_dict,
 )
 
+from fairchem.core.common import distutils
+from fairchem.core.common.flags import flags
+from fairchem.core.common.utils import build_config, setup_logging
 from fairchem.core.models.equiformer_v2.eqv2_to_eqv2_hydra import (
     convert_checkpoint_and_config_to_hydra,
 )
-
-from fairchem.core.common.flags import flags
-from fairchem.core.common.utils import build_config, setup_logging
 from fairchem.core.modules.scaling.fit import compute_scaling_factors
 from fairchem.core.scripts.make_lmdb_sizes import get_lmdb_sizes_parser, make_lmdb_sizes
 
@@ -118,7 +117,6 @@ class TestSmoke:
         ],
     )
     def test_gemnet_fit_scaling(self, model_name, configs, tutorial_val_src):
-
         with tempfile.TemporaryDirectory() as tempdirname:
             # (1) generate scaling factors for gemnet config
             config_yaml = f"{tempdirname}/train_and_val_on_val.yml"
@@ -184,7 +182,7 @@ class TestSmoke:
             train_rundir = Path(tempdirname) / "train"
             train_rundir.mkdir()
             checkpoint_path = str(train_rundir / "checkpoint.pt")
-            acc = _run_main(
+            _ = _run_main(
                 rundir=str(train_rundir),
                 input_yaml=configs["equiformer_v2"],
                 update_dict_with={
@@ -315,6 +313,9 @@ class TestSmoke:
             ("equiformer_v2", True),
             ("equiformer_v2_hydra", False),
             ("equiformer_v2_hydra", True),
+            ("escaip_hydra", False),
+            ("escaip_hydra", True),
+            ("escaip_hydra_grad", False),
         ],
     )
     def test_train_and_predict(
@@ -369,7 +370,7 @@ class TestSmoke:
                 update_dict["model"] = {"backbone": {"activation_checkpoint": True}}
             else:
                 update_dict["model"] = {"activation_checkpoint": True}
-            acc = _run_main(
+            _ = _run_main(
                 rundir=str(train_rundir),
                 input_yaml=configs[model_name],
                 update_dict_with=update_dict,
@@ -566,6 +567,7 @@ class TestSmallDatasetOptim:
             pytest.param("gemnet_oc", 0.41, 0.06, id="gemnet_oc"),
             pytest.param("escn", 0.41, 0.06, id="escn"),
             pytest.param("equiformer_v2", 0.41, 0.06, id="equiformer_v2"),
+            pytest.param("escaip_hydra", 0.41, 0.06, id="escaip"),
         ],
     )
     def test_train_optimization(

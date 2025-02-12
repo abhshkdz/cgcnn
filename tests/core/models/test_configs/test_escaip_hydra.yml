@@ -1,0 +1,111 @@
+trainer: forces
+
+outputs:
+  energy:
+    property: energy
+    shape: 1
+    level: system
+  forces:
+    property: forces
+    irrep_dim: 1
+    level: atom
+    train_on_free_atoms: True
+    eval_on_free_atoms: True
+
+loss_functions:
+  - energy:
+      fn: mae
+      coefficient: 2
+  - forces:
+      fn: l2mae
+      coefficient: 100
+
+evaluation_metrics:
+  metrics:
+    energy:
+      - mae
+    forces:
+      - mae
+      - cosine_similarity
+      - magnitude_error
+    misc:
+      - energy_forces_within_threshold
+  primary_metric: forces_mae
+
+logger:
+    name: tensorboard
+
+model:
+  name: hydra
+  pass_through_head_outputs: True
+  otf_graph: True
+
+  backbone:
+    model: EScAIP_backbone
+
+    # Global Configs
+    activation: gelu
+    direct_forces: true
+    hidden_size: 4
+    regress_forces: true
+    use_fp16_backbone: false
+    use_compile: false
+    use_padding: false
+    batch_size: 5 ## need to be the same as optim.batch_size!!
+
+
+    # Molecular Graph Configs
+    enforce_max_neighbors_strictly: true
+    distance_function: gaussian
+    max_neighbors: 10
+    max_num_elements: 100
+    max_num_nodes_per_batch: 150 # Average 73, Max 220, use 150 for padding
+    max_radius: 12.0
+    otf_graph: true
+    use_pbc: true
+    use_pbc_single: false
+
+
+    # Graph Neural Networks Configs
+    atom_embedding_size: 4
+    atten_name: math
+    atten_num_heads: 1
+    edge_distance_embedding_size: 4
+    edge_distance_expansion_size: 4
+    node_direction_embedding_size: 4
+    node_direction_expansion_size: 10
+    num_layers: 1
+    output_hidden_layer_multiplier: 1
+    readout_hidden_layer_multiplier: 1
+    ffn_hidden_layer_multiplier: 1
+    use_angle_embedding: true
+    use_equivariant_force: true
+
+
+    # Regularization Configs
+    atten_dropout: 0.0
+    mlp_dropout: 0.0
+    normalization: rmsnorm
+    stochastic_depth_prob: 0.0
+
+  heads:
+    forces:
+      module: EScAIP_direct_force_head
+    energy:
+      module: EScAIP_energy_head
+
+optim:
+  batch_size: 5
+  eval_batch_size: 2
+  num_workers: 0
+  lr_initial: 0.01
+  optimizer: AdamW
+  optimizer_params: {"amsgrad": True,weight_decay: 0.0}
+  eval_every: 790
+  max_epochs: 200
+  force_coefficient: 20
+  scheduler: "Null"
+  energy_coefficient: 1
+  clip_grad_norm: 20
+  loss_energy: mae
+  loss_force: l2mae

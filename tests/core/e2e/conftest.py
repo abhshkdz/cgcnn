@@ -1,6 +1,8 @@
-import pytest
+from __future__ import annotations
 
 from pathlib import Path
+
+import pytest
 
 
 @pytest.fixture()
@@ -31,6 +33,10 @@ def configs():
         "equiformer_v2": Path("tests/core/models/test_configs/test_equiformerv2.yml"),
         "equiformer_v2_hydra": Path(
             "tests/core/models/test_configs/test_equiformerv2_hydra.yml"
+        ),
+        "escaip_hydra": Path("tests/core/models/test_configs/test_escaip_hydra.yml"),
+        "escaip_hydra_grad": Path(
+            "tests/core/models/test_configs/test_escaip_hydra_grad.yml"
         ),
     }
 
