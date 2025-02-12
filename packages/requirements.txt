@@ -1,3 +1,4 @@
 torch==2.4.1
 numpy==1.26.4
-ase==3.24.0
+ase @ git+https://gitlab.com/zulissimeta/ase.git@ase-db-backends
+ase-db-backends @ git+https://gitlab.com/zulissimeta/ase-db-backends.git@aselmdb

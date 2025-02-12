@@ -5,8 +5,9 @@ import tempfile
 
 import numpy as np
 import pytest
+from ase.db import connect
 
-from fairchem.core.datasets import LMDBDatabase, create_dataset
+from fairchem.core.datasets import create_dataset
 from fairchem.core.datasets.base_dataset import BaseDataset
 from fairchem.core.trainers.base_trainer import BaseTrainer
 
@@ -17,8 +18,8 @@ def lmdb_database(structures):
         num_atoms = []
         mod2 = []
         mod3 = []
-        asedb_fn = f"{tmpdirname}/asedb.lmdb"
-        with LMDBDatabase(asedb_fn) as database:
+        asedb_fn = f"{tmpdirname}/asedb.aselmdb"
+        with connect(asedb_fn) as database:
             for i, atoms in enumerate(structures):
                 database.write(atoms, data=atoms.info)
                 num_atoms.append(len(atoms))

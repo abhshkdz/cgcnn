@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 from ase import build, db
 from ase.calculators.singlepoint import SinglePointCalculator
+from ase.db import connect
 from ase.io import Trajectory, write
 
 from fairchem.core.datasets import (
@@ -13,7 +14,6 @@ from fairchem.core.datasets import (
     AseReadDataset,
     AseReadMultiStructureDataset,
 )
-from fairchem.core.datasets.lmdb_database import LMDBDatabase
 
 
 @pytest.fixture(
@@ -70,21 +70,21 @@ def ase_dataset(request, structures, tmp_path_factory):
                 "a2g_args": a2g_args,
             }
         )
-    elif request.param == "lmbd_dataset":
-        with LMDBDatabase(str(tmp_path / "asedb.lmdb")) as database:
+    elif request.param == "lmdb_dataset":
+        with connect(str(tmp_path / "asedb.aselmdb")) as database:
             for _i, atoms in enumerate(structures):
                 database.write(atoms, data=atoms.info)
 
         dataset = AseDBDataset(
-            config={"src": str(tmp_path / "asedb.lmdb"), "a2g_args": a2g_args}
+            config={"src": str(tmp_path / "asedb.aselmdb"), "a2g_args": a2g_args}
         )
     else:  # "aselmbd_dataset" with .aselmdb file extension
-        with LMDBDatabase(str(tmp_path / "asedb.lmdb")) as database:
+        with connect(str(tmp_path / "asedb.aselmdb")) as database:
             for _i, atoms in enumerate(structures):
                 database.write(atoms, data=atoms.info)
 
         dataset = AseDBDataset(
-            config={"src": str(tmp_path / "asedb.lmdb"), "a2g_args": a2g_args}
+            config={"src": str(tmp_path / "asedb.aselmdb"), "a2g_args": a2g_args}
         )
 
     return dataset, mult

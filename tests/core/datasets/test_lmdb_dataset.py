@@ -2,8 +2,6 @@ import numpy as np
 import pytest
 
 from fairchem.core.datasets.base_dataset import create_dataset
-from fairchem.core.datasets.ase_datasets import AseAtomsDataset
-from fairchem.core.datasets.lmdb_dataset import LmdbDataset
 from fairchem.core.scripts.make_lmdb_sizes import get_lmdb_sizes_parser, make_lmdb_sizes
 
 

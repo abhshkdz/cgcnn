@@ -26,7 +26,6 @@ from tqdm import tqdm
 from fairchem.core.common.registry import registry
 from fairchem.core.datasets._utils import rename_data_object_keys
 from fairchem.core.datasets.base_dataset import BaseDataset
-from fairchem.core.datasets.lmdb_database import LMDBDatabase
 from fairchem.core.datasets.target_metadata_guesser import guess_property_metadata
 from fairchem.core.modules.transforms import DataTransforms
 from fairchem.core.preprocessing import AtomsToGraphs
@@ -489,7 +488,12 @@ class AseDBDataset(AseAtomsDataset):
 
         for path in sorted(filepaths):
             try:
-                self.dbs.append(self.connect_db(path, config.get("connect_args", {})))
+                self.dbs.append(
+                    self.connect_db(
+                        path,
+                        config.get("connect_args", {}),
+                    )
+                )
             except ValueError:
                 logging.debug(
                     f"Tried to connect to {path} but it's not an ASE database!"
@@ -549,12 +553,11 @@ class AseDBDataset(AseAtomsDataset):
     ) -> ase.db.core.Database:
         if connect_args is None:
             connect_args = {}
-        db_type = connect_args.get("type", "extract_from_name")
-        if db_type in ("lmdb", "aselmdb") or (
-            db_type == "extract_from_name"
-            and str(address).rsplit(".", maxsplit=1)[-1] in ("lmdb", "aselmdb")
-        ):
-            return LMDBDatabase(address, readonly=True, **connect_args)
+
+        # If we're using an aselmdb, let's set readonly=True to be safe!
+        if "aselmdb" in address:
+            connect_args["readonly"] = True
+            connect_args["use_lock_file"] = False
 
         return ase.db.connect(address, **connect_args)
 

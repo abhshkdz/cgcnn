@@ -20,11 +20,12 @@ import numpy as np
 import pytest
 import requests
 import torch
+from ase.db import connect
 from pymatgen.core import Structure
 from pymatgen.core.periodic_table import Element
 from syrupy.extensions.amber import AmberSnapshotExtension
 
-from fairchem.core.datasets import AseDBDataset, LMDBDatabase
+from fairchem.core.datasets import AseDBDataset
 
 if TYPE_CHECKING:
     from syrupy.types import SerializableData
@@ -196,7 +197,7 @@ def dummy_binary_dataset_path(tmpdir_factory, dummy_element_refs):
     rng = np.random.default_rng(seed=0)
 
     tmpdir = tmpdir_factory.mktemp("dataset")
-    with LMDBDatabase(tmpdir / "dummy.aselmdb") as db:
+    with connect(str(tmpdir / "dummy.aselmdb")) as db:
         for _ in range(1000):
             elements = choice(all_binaries)
             structure = Structure.from_prototype("cscl", species=elements, a=2.0)
@@ -213,6 +214,7 @@ def dummy_binary_dataset_path(tmpdir_factory, dummy_element_refs):
                     "stress": rng.random((3, 3)),
                 },
             )
+            print("writing!")
 
     return tmpdir / "dummy.aselmdb"
 

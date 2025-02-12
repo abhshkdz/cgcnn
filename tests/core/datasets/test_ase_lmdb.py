@@ -5,9 +5,8 @@ import pytest
 from ase import build
 from ase.calculators.singlepoint import SinglePointCalculator
 from ase.constraints import FixAtoms
+from ase.db import connect
 from ase.db.row import AtomsRow
-
-from fairchem.core.datasets.lmdb_database import LMDBDatabase
 
 N_WRITES = 100
 N_READS = 200
@@ -57,7 +56,7 @@ def generate_random_structure():
 @pytest.fixture()
 def ase_lmbd_path(tmp_path_factory):
     tmp_path = tmp_path_factory.mktemp("dataset")
-    with LMDBDatabase(tmp_path / "ase_lmdb.lmdb") as db:
+    with connect(tmp_path / "ase_lmdb.aselmdb") as db:
         for structure in test_structures:
             db.write(structure)
 
@@ -65,22 +64,22 @@ def ase_lmbd_path(tmp_path_factory):
             slab = generate_random_structure()
             # Save the slab info, and make sure the info gets put in as data
             db.write(slab, data=slab.info)
-    return tmp_path / "ase_lmdb.lmdb"
+    return tmp_path / "ase_lmdb.aselmdb"
 
 
 def test_aselmdb_write(ase_lmbd_path) -> None:
-    with LMDBDatabase(ase_lmbd_path, readonly=True) as db:
+    with connect(ase_lmbd_path, readonly=True, use_lock_file=False) as db:
         for i, structure in enumerate(test_structures):
             assert str(structure) == str(db._get_row_by_index(i).toatoms())
 
 
 def test_aselmdb_count(ase_lmbd_path) -> None:
-    with LMDBDatabase(ase_lmbd_path, readonly=True) as db:
+    with connect(ase_lmbd_path, readonly=True, use_lock_file=False) as db:
         assert db.count() == N_WRITES + len(test_structures)
 
 
 def test_aselmdb_delete(ase_lmbd_path) -> None:
-    with LMDBDatabase(ase_lmbd_path) as db:
+    with connect(ase_lmbd_path) as db:
         for _i in range(5):
             # Note the available ids list is updating
             # but the ids themselves are fixed.
@@ -89,7 +88,7 @@ def test_aselmdb_delete(ase_lmbd_path) -> None:
 
 
 def test_aselmdb_randomreads(ase_lmbd_path) -> None:
-    with LMDBDatabase(ase_lmbd_path, readonly=True) as db:
+    with connect(ase_lmbd_path, readonly=True, use_lock_file=False) as db:
         for _ in range(N_READS):
             total_size = db.count()
             assert isinstance(
@@ -98,33 +97,33 @@ def test_aselmdb_randomreads(ase_lmbd_path) -> None:
 
 
 def test_aselmdb_constraintread(ase_lmbd_path) -> None:
-    with LMDBDatabase(ase_lmbd_path, readonly=True) as db:
+    with connect(ase_lmbd_path, readonly=True, use_lock_file=False) as db:
         atoms = db._get_row_by_index(2).toatoms()
 
     assert isinstance(atoms.constraints[0], FixAtoms)
 
 
 def test_update_keyvalue_pair(ase_lmbd_path) -> None:
-    with LMDBDatabase(ase_lmbd_path) as db:
+    with connect(ase_lmbd_path) as db:
         db.update(1, test=5)
 
-    with LMDBDatabase(ase_lmbd_path) as db:
+    with connect(ase_lmbd_path) as db:
         row = db._get_row(1)
         assert row.test == 5
 
 
 def test_update_atoms(ase_lmbd_path) -> None:
-    with LMDBDatabase(ase_lmbd_path) as db:
+    with connect(ase_lmbd_path) as db:
         db.update(40, atoms=test_structures[-1])
 
-    with LMDBDatabase(ase_lmbd_path) as db:
+    with connect(ase_lmbd_path) as db:
         row = db._get_row(40)
         assert str(row.toatoms()) == str(test_structures[-1])
 
 
 def test_metadata(ase_lmbd_path) -> None:
-    with LMDBDatabase(ase_lmbd_path) as db:
+    with connect(ase_lmbd_path) as db:
         db.metadata = {"test": True}
 
-    with LMDBDatabase(ase_lmbd_path, readonly=True) as db:
+    with connect(ase_lmbd_path, readonly=True, use_lock_file=False) as db:
         assert db.metadata["test"] is True
