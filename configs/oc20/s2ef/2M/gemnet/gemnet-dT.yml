@@ -1,10 +1,16 @@
-# Run with `--gp-gpus N` where N = number of GPUs to split the model over.
-
 includes:
-- configs/s2ef/all/base.yml
+- configs/s2ef/2M/base.yml
+
+loss_functions:
+  - energy:
+      fn: mae
+      coefficient: 1
+  - forces:
+      fn: l2mae
+      coefficient: 100
 
 model:
-  name: gp_gemnet_t
+  name: gemnet_t
   num_spherical: 7
   num_radial: 128
   num_blocks: 3
@@ -31,7 +37,7 @@ model:
   otf_graph: False
   output_init: HeOrthogonal
   activation: silu
-  scale_file: configs/s2ef/all/gp_gemnet/scaling_factors/gemnet-dT.json
+  scale_file: configs/oc20/s2ef/all/gemnet/scaling_factors/gemnet-dT.json
 
   regress_forces: True
   direct_forces: True
@@ -40,7 +46,7 @@ optim:
   batch_size: 32
   eval_batch_size: 32
   eval_every: 5000
-  num_workers: 8
+  num_workers: 2
   lr_initial: 5.e-4
   optimizer: AdamW
   optimizer_params: {"amsgrad": True}
@@ -49,7 +55,5 @@ optim:
   factor: 0.8
   patience: 3
   max_epochs: 80
-  force_coefficient: 100
-  energy_coefficient: 1
   ema_decay: 0.999
   clip_grad_norm: 10

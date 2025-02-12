@@ -1,36 +1,33 @@
+# Run this on 4 GPUs -- so with an effective batch size of 32.
+
 includes:
-  - configs/s2ef/all/base.yml
+  - configs/is2re/all/base.yml
 
 model:
   name: painn
-  hidden_channels: 512
+  hidden_channels: 1024
   num_layers: 6
   num_rbf: 128
   cutoff: 12.0
   max_neighbors: 50
-  scale_file: configs/s2ef/all/painn/painn_nb6_scaling_factors.pt
-  regress_forces: True
-  direct_forces: True
+  scale_file: configs/oc20/s2ef/all/painn/painn_nb6_scaling_factors.pt
+  regress_forces: False
   use_pbc: True
 
 optim:
-  batch_size: 32
-  eval_batch_size: 32
+  batch_size: 8
+  eval_batch_size: 8
   load_balancing: atoms
-  eval_every: 5000
   num_workers: 2
   optimizer: AdamW
   optimizer_params:
     amsgrad: True
-    weight_decay: 0.  # 2e-6 (TF weight decay) / 1e-4 (lr) = 2e-2
+    weight_decay: 0  # 2e-6 (TF weight decay) / 1e-4 (lr) = 2e-2
   lr_initial: 1.e-4
-  lr_gamma: 0.8
   scheduler: ReduceLROnPlateau
   mode: min
   factor: 0.8
   patience: 3
   max_epochs: 80
-  force_coefficient: 100
-  energy_coefficient: 1
   ema_decay: 0.999
   clip_grad_norm: 10

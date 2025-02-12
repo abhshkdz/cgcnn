@@ -1,25 +1,25 @@
 includes:
-  - configs/s2ef/all/base.yml
+  - configs/s2ef/2M/base.yml
 
 model:
   name: gemnet_oc
   num_spherical: 7
   num_radial: 128
-  num_blocks: 4
+  num_blocks: 6
   emb_size_atom: 256
-  emb_size_edge: 512
+  emb_size_edge: 1024
   emb_size_trip_in: 64
-  emb_size_trip_out: 64
-  emb_size_quad_in: 32
+  emb_size_trip_out: 128
+  emb_size_quad_in: 64
   emb_size_quad_out: 32
   emb_size_aint_in: 64
   emb_size_aint_out: 64
-  emb_size_rbf: 16
+  emb_size_rbf: 32
   emb_size_cbf: 16
-  emb_size_sbf: 32
+  emb_size_sbf: 64
   num_before_skip: 2
   num_after_skip: 2
-  num_concat: 1
+  num_concat: 4
   num_atom: 3
   num_output_afteratom: 3
   cutoff: 12.0
@@ -42,7 +42,7 @@ model:
   extensive: True
   output_init: HeOrthogonal
   activation: silu
-  scale_file: configs/s2ef/all/gemnet/scaling_factors/gemnet-oc.pt
+  scale_file: configs/oc20/s2ef/all/gemnet/scaling_factors/gemnet-oc-large.pt
 
   regress_forces: True
   direct_forces: True
@@ -58,12 +58,12 @@ model:
   qint_tags: [1, 2]
 
 optim:
-  batch_size: 16
-  eval_batch_size: 16
+  batch_size: 4
+  eval_batch_size: 4
   load_balancing: atoms
   eval_every: 5000
   num_workers: 2
-  lr_initial: 5.e-4
+  lr_initial: 2.e-4
   optimizer: AdamW
   optimizer_params:
     amsgrad: True
@@ -73,5 +73,7 @@ optim:
   factor: 0.8
   patience: 3
   max_epochs: 80
+  force_coefficient: 100
+  energy_coefficient: 1
   ema_decay: 0.999
   clip_grad_norm: 10

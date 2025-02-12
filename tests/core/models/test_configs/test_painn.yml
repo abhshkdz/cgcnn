@@ -40,7 +40,7 @@ model:
   num_rbf: 32
   cutoff: 12.0
   max_neighbors: 5
-  scale_file: configs/s2ef/all/painn/painn_nb6_scaling_factors.pt
+  scale_file: configs/oc20/s2ef/all/painn/painn_nb6_scaling_factors.pt
   regress_forces: True
   direct_forces: True
   use_pbc: True

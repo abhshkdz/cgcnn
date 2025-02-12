@@ -42,7 +42,7 @@ model:
   extensive: True
   output_init: HeOrthogonal
   activation: silu
-  scale_file: configs/s2ef/all/gemnet/scaling_factors/gemnet-oc.pt
+  scale_file: configs/oc20/s2ef/all/gemnet/scaling_factors/gemnet-oc.pt
 
   regress_forces: True
   direct_forces: True
