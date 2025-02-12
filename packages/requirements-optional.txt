@@ -1,4 +1,4 @@
-torch_geometric==2.6.1
+torch_geometric @ git+https://github.com/pyg-team/pytorch_geometric.git
 -f https://data.pyg.org/whl/torch-2.4.0+cpu.html
 torch_scatter==2.1.2
 torch_sparse==0.6.18

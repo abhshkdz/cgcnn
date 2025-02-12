@@ -31,6 +31,7 @@ select = [
   "UP",     # pyupgrade
   "W",      # pycodestyle warning
   "YTT",    # flake8-2020
+  "NPY201"  # NumPy 2 support
 ]
 ignore = [
   "PLR",    # Design related pylint codes
